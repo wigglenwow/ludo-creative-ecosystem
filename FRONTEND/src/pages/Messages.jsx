@@ -7,7 +7,7 @@ import { api, useAuth } from '../context/AuthContext';
 const socket = io('http://localhost:3000', { withCredentials: true });
 
 function Messages() {
-  // 🛠️ THE FIX: Safe context fallback shielding to stop the TypeError completely!
+  // Safe context fallback shielding to stop the TypeError completely!
   const auth = useAuth();
   const user = auth && auth.user ? auth.user : null;
   
@@ -22,6 +22,18 @@ function Messages() {
   const [loadingChats, setLoadingChats] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [localCrashError, setLocalCrashError] = useState('');
+
+  // Helper utility to safely update a conversation snippet and bring it to the top of the sidebar list
+  const updateSidebarWithLatestMessage = (chatId, text) => {
+    setChats((prevChats) => {
+      const safePrev = Array.isArray(prevChats) ? prevChats : [];
+      return safePrev.map((c) =>
+        c?._id === chatId
+          ? { ...c, lastMessage: text, updatedAt: new Date().toISOString() }
+          : c
+      ).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    });
+  };
 
   // 1. Initial Mount: Gather all conversational streams for the logged-in user account
   useEffect(() => {
@@ -62,15 +74,8 @@ function Messages() {
         setMessages((prev) => [...prev, incomingMessage]);
       }
 
-      // Automatically update the side layout preview parameters safely
-      setChats((prevChats) => {
-        const safePrev = Array.isArray(prevChats) ? prevChats : [];
-        return safePrev.map((c) =>
-          c?._id === incomingMessage.chat
-            ? { ...c, lastMessage: incomingMessage.text, updatedAt: new Date().toISOString() }
-            : c
-        ).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-      });
+      // Automatically update the side layout preview parameters safely for incoming messages
+      updateSidebarWithLatestMessage(incomingMessage.chat, incomingMessage.text);
     });
 
     return () => {
@@ -107,16 +112,30 @@ function Messages() {
     if (!newMessageText.trim() || !activeChat?._id) return;
 
     const currentUserId = user?._id || user?.id || '';
+    const cleanText = newMessageText.trim();
+
     const messagePayload = {
       chat: activeChat._id,
       sender: currentUserId,
-      text: newMessageText.trim()
+      text: cleanText
     };
 
     try {
-      await api.post(`/chat/${activeChat._id}/messages`, { text: messagePayload.text });
+      // 1. Persist permanently down into the MongoDB database layer
+      const response = await api.post(`/api/chat/${activeChat._id}/messages`, { text: cleanText });
+      
+      // Use the clean server payload object if returned, otherwise use local payload structure
+      const finalSavedMsg = response.data?.message || { ...messagePayload, createdAt: new Date().toISOString() };
+
+      // 2. Fire the WebSocket event broadcast out to room occupants
       socket.emit('send_message', messagePayload);
-      setMessages((prev) => [...prev, { ...messagePayload, createdAt: new Date().toISOString() }]);
+
+      // 3. Synchronously push to local messages timeline array state
+      setMessages((prev) => [...prev, finalSavedMsg]);
+
+      // 4. Instantly shift and update the sender's local sidebar configuration card to the top
+      updateSidebarWithLatestMessage(activeChat._id, cleanText);
+
       setNewMessageText('');
     } catch (err) {
       console.error("Communication payload transmit failure:", err);
