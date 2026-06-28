@@ -71,9 +71,8 @@ exports.getUserChats = async (req, res) => {
     res.status(500).json({ message: "Error gathering structural chat matrices.", error: error.message });
   }
 };
-// =========================================================================
+
 // POST A NEW MESSAGE TO A CHAT ROOM
-// =========================================================================
 exports.createMessage = async (req, res) => {
   try {
     const { text } = req.body;
@@ -87,15 +86,18 @@ exports.createMessage = async (req, res) => {
     const newMessage = await Message.create({
       chat: chatId,
       sender: req.user.id,
-      text
+      text: text.trim()
     });
 
     // Update the parent chat room's lastMessage telemetry tracker field
-    await Chat.findByIdAndUpdate(chatId, { lastMessage: text });
+    await Chat.findByIdAndUpdate(chatId, { lastMessage: text.trim() });
+
+    // Populate the sender metrics to prevent timeline rendering glitches
+    const populatedMessage = await Message.findById(newMessage._id).populate('sender', 'name');
 
     res.status(201).json({
       success: true,
-      message: newMessage
+      message: populatedMessage
     });
   } catch (error) {
     res.status(500).json({ message: "Error committing message payload to database.", error: error.message });
