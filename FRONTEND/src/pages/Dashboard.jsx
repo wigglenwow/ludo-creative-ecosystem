@@ -69,7 +69,8 @@ function Dashboard() {
       price: Number(formData.price),
       mediaType: formData.category, // <-- Remapped from 'category' to 'mediaType'
       images: finalImageUrl,        // <-- Remapped from 'imageUrl' string to 'images' array
-      stock: 1
+      stock: 1,
+      productionSteps: steps        // <-- Explicitly attached effort verification array
     };
 
     try {

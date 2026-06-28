@@ -34,7 +34,13 @@ const productSchema = new mongoose.Schema({
     type: Number, 
     default: 1, // Useful for 1-of-1 original fine art pieces
     min: 0
-  }
+  },
+  // The Effort Validation tracking phase blueprint array
+  productionSteps: [{
+    stepNumber: { type: Number, required: true },
+    title: { type: String, required: true },
+    description: { type: String, required: true }
+  }]
 }, {
   timestamps: true
 });
