@@ -33,8 +33,8 @@ function Navbar() {
 
         {/* Dynamic Auth Section Panel */}
         <div className="flex items-center space-x-4">
-          {/* Only show Artist Dashboard option if user is logged in as an artist */}
-          {user && user.role === 'artist' && (
+          {/* Only show Artist Dashboard option if user is logged in as a seller */}
+          {user && user.role === 'seller' && (
             <Link to="/dashboard" className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors">
               Studio Dashboard
             </Link>
