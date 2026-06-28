@@ -1,0 +1,11 @@
+# Ignore local node packages
+BACKEND/node_modules/
+FRONTEND/node_modules/
+
+# Ignore local environment variable secrets
+BACKEND/.env
+FRONTEND/.env.local
+
+# Ignore OS system caches
+.DS_Store
+Thumbs.db
